@@ -1,106 +1,169 @@
-<html>
-	<head>
-		<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/MathJax.js?config=default'></script>
-		<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-		<style>
-			h1 {
-				text-align: center;
-			}
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>CS184 HW3 — PathTracer</title><style>
+body { font-family: "Times New Roman", Times, serif; font-size: 12pt; line-height: 1.6; color: #111; background: #fff; max-width: 760px; margin: 56px auto; padding: 0 32px; }
+.container { margin: 0 auto; padding: 0; }
+h1 { font-size: 22pt; font-weight: bold; text-align: center; margin: 0 0 16px; line-height: 1.25; }
+h2 { font-size: 16pt; margin: 32px 0 14px; padding-bottom: 8px; border-bottom: 1px solid #aaa; line-height: 1.3; }
+h3 { font-size: 13pt; margin: 24px 0 8px; line-height: 1.3; }
+p { margin: 0 0 12px; }
+body > h1 + p { text-align: center; margin-bottom: 28px; }
+figure { margin: 28px auto; text-align: center; break-inside: avoid; }
+img { max-width: 100%; height: auto; display: block; margin: 0 auto; }
+figcaption { max-width: 480px; margin: 10px auto 0; font-size: 11pt; line-height: 1.4; text-align: left; }
+a { color: #222; text-decoration: underline; }
+@page { size: letter; margin: 0.85in; }
+@media print { body { max-width: none; margin: 0; padding: 0; } h2,h3 { break-after: avoid; } p { orphans: 3; widows: 3; } }
+table{width:100%;border-collapse:collapse;margin:20px 0;font-size:10.5pt}th,td{padding:9px 6px;border-bottom:1px solid #ccc;text-align:right}th:first-child,td:first-child{text-align:left}thead{display:table-header-group}th{border-top:1px solid #444;border-bottom:1px solid #444}code{font-family:"Times New Roman",Times,serif;font-style:italic}</style></head><body><h1>CS184 Homework 3 — PathTracer</h1><p>Yuheng Wang · Fall 2026</p><p style="text-align:center">Webpage: <a href="https://cal-cs184-student.github.io/hw3-yuh23-team-writeup/">cal-cs184-student.github.io/hw3-yuh23-team-writeup/</a></p>
+<h2>Overview</h2>
+<p>This project builds a diffuse path tracer from camera rays to adaptively sampled global illumination. Camera rays first locate visible surfaces through triangle and sphere intersection routines. A bounding volume hierarchy accelerates those queries, direct-light estimators compute illumination from emitters, and recursive BSDF sampling accounts for light reflected between surfaces. Adaptive sampling then allocates more camera samples to pixels whose estimates have not yet stabilized.</p>
+<p>The results illustrate three distinct sources of improvement. BVH traversal reduces the cost of finding intersections without changing the rendered image. Sampling lights directly reduces variance compared with drawing directions uniformly over a hemisphere. Additional light bounces change the illumination itself, filling shadows and carrying color between surfaces. Finally, adaptive sampling reduces unnecessary work on stable pixels while retaining more samples in difficult regions.</p>
+<p>Implementation challenges included numerically stable intersection tests, preserving the nearest hit during BVH traversal, and accounting correctly for sampling probabilities. Ray-interval checks and focused geometry tests addressed the intersection cases. A corrected area-light probability density and probability compensation for Russian Roulette addressed lighting estimates. Controlled transport tests checked bounce accumulation, while variance and sample-count tests checked the adaptive stopping rule. The following sections document the algorithms, measured comparisons, and rendered results.</p>
+<h2>Part 1: Ray Generation and Scene Intersection</h2>
+<h3>Rendering pipeline</h3>
+<p>For the Part 1 images, each pixel is estimated using 16 camera rays. For each ray, a uniform random offset within the pixel is added to its bottom-left coordinate. Dividing the resulting coordinates by the image width and height produces normalized image coordinates. The colors returned by tracing these rays are averaged and stored in the pixel buffer. Sampling multiple positions within a pixel smooths boundaries between objects.</p>
+<p>The camera maps normalized coordinates (x, y) to a virtual sensor plane at z = −1. Its sensor position is ((2x − 1) tan(hFov/2), (2y − 1) tan(vFov/2), −1), with field-of-view angles converted from degrees to radians. The camera-to-world matrix rotates this vector, and the result is normalized to produce the ray direction. The ray starts at the camera's world-space position, with min_t and max_t initialized to the near and far clipping limits.</p>
+<p>For Part 1, the supplied scene traversal checks every primitive. Each accepted hit reduces the ray's max_t, so a farther surface cannot replace a nearer hit. The intersection record stores the distance, normal, primitive, and material. The supplied normal-shading function converts a normal n to RGB using 0.5n + 0.5; the output image also passes through the renderer's display conversion. These colors visualize surface orientation, rather than physical lighting. Rays that miss these scenes return black.</p>
+<h3>Triangle intersection</h3>
+<p>The implementation uses the Möller–Trumbore algorithm. Let e1 = p2 − p1 and e2 = p3 − p1. A point in the triangle can be expressed as p1 + u e1 + v e2. Equating this with the ray o + t d gives the three unknowns t, u, and v. Cross and dot products solve this system without explicitly inverting a matrix.</p>
+<p>A near-zero determinant indicates a parallel ray or degenerate triangle and is rejected. The tolerance is scaled by the lengths of both edges and the ray direction. A hit must satisfy u ≥ 0, v ≥ 0, and u + v ≤ 1, placing it inside the triangle, and t must lie within the ray's current interval. Both sides of a triangle are accepted. At a valid hit, the vertex normals are interpolated with weights (1 − u − v, u, v), then normalized. Both intersection interfaces update max_t; the boolean interface reuses the full intersection calculation.</p>
+<h3>Sphere intersection</h3>
+<p>Substituting the ray into the sphere equation gives a t² + 2b t + c = 0, where a = d·d, b = (o − center)·d, and c = |o − center|² − radius². A negative discriminant means no intersection. The roots are computed with a cancellation-resistant quadratic formula and sorted. The smaller valid root is selected; if it is before min_t, the larger root is tried. This handles rays starting inside spheres and rays whose entry point is clipped. The normal is the normalized vector from the sphere center to the hit point.</p>
+<h3>Normal-shaded results</h3>
+<p>All three images below are original 480 × 360 PNG files saved directly by the renderer using its -f option, with 16 samples per pixel and four worker threads. The image files have not been resized or converted.</p>
+<figure><img src="images/CBempty_normals.png" width="480" height="360" alt="Normal-shaded empty Cornell box"><figcaption>CBempty.dae: flat wall colors show the constant normals of the room's triangles.</figcaption></figure>
+<figure><img src="images/CBspheres_normals.png" width="480" height="360" alt="Normal-shaded Cornell box with two spheres"><figcaption>CBspheres_lambertian.dae: smooth color changes across both spheres show their analytic surface normals; the room retains flat face colors.</figcaption></figure>
+<figure><img src="images/banana_normals.png" width="480" height="360" alt="Normal-shaded banana mesh on a platform"><figcaption>banana.dae: smoothly varying colors on the curved mesh illustrate interpolated vertex normals, with sharper orientation changes at platform boundaries.</figcaption></figure>
+<h3>Validation</h3>
+<p>The project rebuild succeeded. Focused checks passed for camera center/corner rays, camera translation and rotation, normalized directions, and clipping limits. Triangle checks covered front and back hits, edge and vertex hits, parallel rays, degenerate triangles, missed triangles, clipped hits, non-unit ray directions, and interpolated normals. Sphere checks covered entry and exit roots, rays starting inside, tangency, misses, clipped entry points, and non-unit directions. The three saved renders were also visually inspected.</p>
+<h2>Part 2: Bounding Volume Hierarchy</h2>
+<h3>BVH construction and splitting heuristic</h3>
+<p>The BVH groups nearby primitives into a binary tree so that an intersection test can reject entire groups whose bounding boxes the ray misses. At each recursive call, the implementation computes a bounding box enclosing all primitives in the current range, together with a second box enclosing their bounding-box centroids. If the range contains at most four primitives, it becomes a leaf storing the corresponding iterator range.</p>
+<p>Otherwise, the algorithm selects the axis with the greatest centroid extent and partitions the primitives at the median centroid on that axis using <code>std::nth_element</code>. It then recursively constructs the two children. A median split balances the primitive counts and guarantees two nonempty children, including when many primitives share the same centroid. This prevents the infinite recursion that a spatial midpoint split can cause when all primitives fall on one side. The heuristic is inexpensive and gives a balanced tree, although it does not explicitly minimize bounding-box overlap or traversal cost as a surface-area heuristic would.</p>
+<h3>Ray–box intersection</h3>
+<p>Bounding-box intersection uses the slab method. Each axis supplies the interval of ray parameters between the box's two planes. The two values are exchanged when necessary, and the intersection of the three intervals is clipped to both the caller's interval and the ray's valid interval. An empty interval means a miss. Equal entry and exit times are accepted, preserving hits on flat boxes and boundaries. For a zero direction component, the ray must already be inside that axis's slab; this explicit case avoids division by zero and undefined boundary arithmetic.</p>
+<h3>BVH traversal</h3>
+<p>Traversal first rejects nodes whose bounds do not intersect the ray. At a leaf, it tests only the primitives in that leaf. The boolean <code>has_intersection</code> routine stops at the first valid primitive hit. The nearest-hit <code>intersect</code> routine checks both potentially intersected children, visiting the child with the earlier box entry first. A primitive hit shortens <code>ray.max_t</code>; the second child's bounds are then rechecked against that shorter interval. This preserves the closest hit while avoiding work on nodes that are now entirely behind it.</p>
+<h3>Large-scene normal-shaded renders</h3>
+<p>The following original PNGs were saved directly with the renderer's <code>-f</code> option at 480 × 360, using 16 samples per pixel and one rendering thread. No image files were resized or converted. The large meshes are practical to render interactively with BVH acceleration.</p>
+<figure><img src="images/maxplanck_bvh_normals.png" width="480" height="360" alt="Normal-shaded maxplanck scene"><figcaption>Max Planck: a close-up of the face shows smoothly interpolated normals across the dense triangle mesh. The scene contains 50,801 primitives; measured rendering time was 0.5851 s.</figcaption></figure>
+<figure><img src="images/CBlucy_bvh_normals.png" width="480" height="360" alt="Normal-shaded CBlucy scene"><figcaption>Lucy: the detailed statue is rendered inside the Cornell box, with its surface orientation encoded as color. The scene contains 133,796 primitives; measured rendering time was 0.9704 s.</figcaption></figure>
+<figure><img src="images/CBdragon_bvh_normals.png" width="480" height="360" alt="Normal-shaded CBdragon scene"><figcaption>Dragon: curved features and fine geometry retain smooth normal shading inside the Cornell box. The scene contains 100,012 primitives; measured rendering time was 0.9229 s.</figcaption></figure>
+<h3>Timing experiment</h3>
+<p>The original Part 1 executable was preserved before the BVH changes. Both versions rendered the same three scenes at 480 × 360, with one sample per pixel and one worker thread, on the same Apple Silicon Mac. Each measurement was repeated three times, with runs performed sequentially. The table reports the median of the renderer's reported rendering times; scene loading, BVH construction, and file saving are not included in these rendering-time measurements. A single thread avoids contention in the starter's shared diagnostic counters and makes the comparison reproducible.</p>
+<table><thead><tr><th>Scene</th><th>Primitives</th><th>Without BVH (s)</th><th>With BVH (s)</th><th>Speedup</th><th>BVH primitive tests/ray</th></tr></thead><tbody>
+<tr><td>cow.dae</td><td>5,856</td><td>2.8981</td><td>0.0284</td><td>102.0×</td><td>3.13</td></tr>
+<tr><td>beetle.dae</td><td>7,558</td><td>3.6314</td><td>0.0326</td><td>111.4×</td><td>3.78</td></tr>
+<tr><td>teapot.dae</td><td>2,464</td><td>1.2838</td><td>0.0363</td><td>35.4×</td><td>4.18</td></tr>
+</tbody></table>
+<p>BVH acceleration reduced the median rendering time from 2.8981 s to 0.0284 s for cow (102.0×), from 3.6314 s to 0.0326 s for beetle (111.4×), and from 1.2838 s to 0.0363 s for teapot (35.4×). Without acceleration, every ray tests all primitives, whereas the BVH rejects most groups before reaching a leaf. The smaller teapot scene benefits less: there is less brute-force work to eliminate, and its geometry leads to more primitive tests per ray than the other two scenes. These measurements illustrate that primitive count alone does not determine BVH performance; spatial overlap and the camera's view also affect traversal. The first-run PNGs were byte-for-byte identical between the two executables for all three scenes, confirming unchanged rendered results for these comparisons.</p>
+<h3>Validation</h3>
+<p>The project rebuilt successfully. Tests compared both nearest-hit and any-hit BVH queries against brute force for 5,000 seeded rays through a mixed scene of triangles and spheres; all comparisons passed. Additional checks covered parallel rays, clipping limits, rays starting inside a box, boundary contacts, flat and empty boxes, an empty scene, and coincident primitive centroids. Structural checks confirmed that all primitives occur once across the leaves, that no leaf exceeds four primitives, and that each parent encloses its children. All three large-scene images were visually inspected.</p>
+<h2>Part 3: Direct Illumination</h2>
+<h3>Diffuse reflection and emitted light</h3>
+<p>The Lambertian diffuse BSDF evaluates to reflectance / π. It is independent of the incoming and outgoing directions within the reflection hemisphere; the cosine factor enters the lighting integral separately. Its sampling method uses the provided cosine-weighted hemisphere sampler and returns that sample's probability density and BSDF value. Zero-bounce radiance is the emission of the first surface hit by the camera ray. The final Part 3 estimate adds zero-bounce emission to one-bounce reflected light; with maximum ray depth zero, only emission is returned.</p>
+<h3>Uniform hemisphere sampling</h3>
+<p>At the visible surface, an orthonormal local frame is constructed with its z-axis aligned to the normal. The implementation draws N = number of lights × samples per area light directions uniformly over the local hemisphere, with density p(ω) = 1 / (2π). Each direction is rotated into world space and traced from the hit point. Setting the ray's minimum distance to EPS_F avoids a numerical self-intersection. The closest intersected surface contributes its emission, so a nonemissive blocker contributes zero rather than allowing light to pass through it.</p>
+<p>For each sample, the contribution is f(ωo, ωi) L<sub>e</sub> cos θ / p(ωi), where cos θ is the sampled local direction's z component. Summing these values and dividing by N gives the outgoing-radiance estimate. Most directions miss the emitter or hit nonemissive surfaces, so a small light can produce substantial noise at low sample counts. This method cannot effectively sample a point light, whose direction has zero probability under continuous hemisphere sampling.</p>
+<h3>Importance sampling of lights</h3>
+<p>The second estimator samples each light directly using <code>sample_L</code>, which returns incoming radiance, a world-space direction, distance, and solid-angle probability density. Directions below the surface are rejected. A shadow ray spans the interval from EPS_F to distance-to-light − EPS_F, excluding both the starting surface and the emitter itself. If the BVH finds no blocker on that segment, the sample contributes f(ωo, ωi) L<sub>i</sub> cos θ / pdf. Samples are averaged separately for each light, then those light estimates are summed. Delta lights are sampled once because repeating the same deterministic direction provides no benefit.</p>
+<p>The one-bounce wrapper selects hemisphere sampling when the <code>-H</code> flag is set, and light sampling otherwise. During validation, the command-line parser was simplified so <code>-H</code> is a genuine no-argument switch, removing its previous argument-index compensation. The area-light PDF also used a non-unit vector in its cosine term; this was corrected. The corrected area-to-solid-angle conversion uses distance² / (area × |n<sub>light</sub> · ω|), with unit vectors in the dot product.</p>
+<h3>Comparison of the two methods</h3>
+<p>Each pair below uses the same scene and camera, 480 × 360 resolution, 16 samples per pixel, 8 light samples, maximum ray depth 1, and one worker thread. The PNG files were saved directly by the renderer and have not been resized or converted.</p>
+<figure><img src="images/CBbunny_hemisphere_s16_l8_m1.png" width="480" height="360" alt="Cornell box with bunny: uniform hemisphere sampling. 16 samples/pixel, 8 light samples."><figcaption>Cornell box with bunny: uniform hemisphere sampling. 16 samples/pixel, 8 light samples.</figcaption></figure>
+<figure><img src="images/CBbunny_importance_s16_l8_m1.png" width="480" height="360" alt="Cornell box with bunny: importance sampling of lights. 16 samples/pixel, 8 light samples."><figcaption>Cornell box with bunny: importance sampling of lights. 16 samples/pixel, 8 light samples.</figcaption></figure>
+<figure><img src="images/CBspheres_lambertian_hemisphere_s16_l8_m1.png" width="480" height="360" alt="Cornell box with diffuse spheres: uniform hemisphere sampling. 16 samples/pixel, 8 light samples."><figcaption>Cornell box with diffuse spheres: uniform hemisphere sampling. 16 samples/pixel, 8 light samples.</figcaption></figure>
+<figure><img src="images/CBspheres_lambertian_importance_s16_l8_m1.png" width="480" height="360" alt="Cornell box with diffuse spheres: importance sampling of lights. 16 samples/pixel, 8 light samples."><figcaption>Cornell box with diffuse spheres: importance sampling of lights. 16 samples/pixel, 8 light samples.</figcaption></figure>
+<p>At the same sample settings, directly sampling the area light produces smoother illumination and cleaner shadow boundaries than uniform hemisphere sampling. Hemisphere sampling wastes many trials on directions that provide no direct light, producing conspicuous speckles, especially on surfaces from which the light occupies a small solid angle. Importance sampling concentrates trials on the emitter; it still has variance because different sampled points can be visible or occluded, particularly in the penumbra. The two estimators target the same direct-reflection integral when their emitter models agree, but finite sampling and the starter's two-sided emissive geometry versus directional area-light model can create visible differences near the light. Neither method adds indirect interreflection at this stage, so regions without a direct view of the light remain dark.</p>
+<h3>Area-light samples and soft-shadow noise</h3>
+<p>The following bunny renders hold the camera, resolution (480 × 360), pixel samples (1), and maximum depth (1) fixed. Only the number of area-light samples changes: 1, 4, 16, and 64. All four use light importance sampling, not uniform hemisphere sampling.</p>
+<figure><img src="images/CBbunny_importance_s1_l1_m1.png" width="480" height="360" alt="Bunny soft-shadow comparison: 1 sample/pixel and 1 sample per area light."><figcaption>Bunny soft-shadow comparison: 1 sample/pixel and 1 sample per area light.</figcaption></figure>
+<figure><img src="images/CBbunny_importance_s1_l4_m1.png" width="480" height="360" alt="Bunny soft-shadow comparison: 1 sample/pixel and 4 samples per area light."><figcaption>Bunny soft-shadow comparison: 1 sample/pixel and 4 samples per area light.</figcaption></figure>
+<figure><img src="images/CBbunny_importance_s1_l16_m1.png" width="480" height="360" alt="Bunny soft-shadow comparison: 1 sample/pixel and 16 samples per area light."><figcaption>Bunny soft-shadow comparison: 1 sample/pixel and 16 samples per area light.</figcaption></figure>
+<figure><img src="images/CBbunny_importance_s1_l64_m1.png" width="480" height="360" alt="Bunny soft-shadow comparison: 1 sample/pixel and 64 samples per area light."><figcaption>Bunny soft-shadow comparison: 1 sample/pixel and 64 samples per area light.</figcaption></figure>
+<p>With one light sample, visibility is estimated from one point on the emitter, so the floor and shadow transition show strong grain. Increasing to 4, 16, and 64 samples progressively stabilizes the estimate of the visible fraction of the light and smooths the penumbra. The physical shadow remains soft because the emitter has finite area. Increasing light samples does not remove aliasing along object silhouettes when camera sampling remains fixed at one sample per pixel.</p>
+<h3>Zero-bounce check</h3>
+<figure><img src="images/CBbunny_importance_s16_l1_m0.png" width="480" height="360" alt="Zero-bounce illumination: only the ceiling emitter is visible; nonemissive surfaces are black."><figcaption>Zero-bounce illumination: only the ceiling emitter is visible; nonemissive surfaces are black.</figcaption></figure>
 
-			.container {
-				margin: 0 auto;
-				padding: 60px 20%;
-			}
-
-			figure {
-				text-align: center;
-			}
-
-			img {
-				display: inline-block;
-			}
-
-			body {
-				font-family: 'Inter', sans-serif;
-			}
-		</style>
-	</head>
-	<body>
-		<div class="container">
-		<h1>CS184/284A Fall 2026 Homework 3 Write-Up</h1>
-		<div style="text-align: center;">Names: </div>
-
-		<br>
-
-		Link to webpage: (TODO) <a href="https://cs184.eecs.berkeley.edu/fa26">cs184.eecs.berkeley.edu/fa26</a>
-		Link to GitHub repository: (TODO) <a href="https://cs184.eecs.berkeley.edu/fa26">cs184.eecs.berkeley.edu/fa26</a>
-		
-		<figure>
-			<img src="assets/cornell.png" alt="Cornell Boxes with Bunnies" style="width:70%"/>
-			<figcaption>You can add images with captions!</figcaption>
-		</figure>
-
-		<!--
-		We've already added one heading per part, to make your write-up as navigable when grading. Please fit your write-up within these sections!
-		-->
-
-		<h2>Overview</h2>
-		Give a high-level overview of what you implemented in this homework. Think about what you've built as a whole. Share your thoughts on what interesting things you've learned from completing the homework.
-
-		<h2>Part 1: Ray Generation and Scene Intersection</h2>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
-
-		<p>Here is an example 2x2 gridlike structure using an HTML table. Each <b>tr</b> is a row and each <b>td</b> is a column in that row. You might find this useful for framing and showing your result images in an organized fashion.</p>
-		<div style="display: flex; flex-direction: column; align-items: center;">
-			<table style="width: 100%; text-align: center; border-collapse: collapse;">
-			  <tr>
-				<td style="text-align: center;">
-				  <img src="assets/cornell.png" width="400px"/>
-				  <figcaption>Caption goes here.</figcaption>
-				</td>
-				<td style="text-align: center;">
-				  <img src="assets/cornell.png" width="400px"/>
-				  <figcaption>Caption goes here.</figcaption>
-				</td>
-			  </tr>
-			  <tr>
-				<td style="text-align: center;">
-				  <img src="assets/cornell.png" width="400px"/>
-				  <figcaption>Caption goes here.</figcaption>
-				</td>
-				<td style="text-align: center;">
-				  <img src="assets/cornell.png" width="400px"/>
-				  <figcaption>Caption goes here.</figcaption>
-				</td>
-			  </tr>
-			</table>
-		</div>
-		
-		<h2>Part 2: Bounding Volume Hierarchy</h2>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
-
-		<h2>Part 3: Direct Illumination</h2>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
-
-		<h2>Part 4: Global Illumination</h2>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
-
-		<h2>Part 5: Adaptive Sampling</h2>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
-
-		<h2>(Optional) Part 6: Extra Credit Opportunities</h2>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
-		
-		<h2>Additional Notes (please remove)</h2>
-		<ul>
-			<li>You can also add code if you'd like as so: <code>code code code</code></li>
-			<li>If you'd like to add math equations, 
-				<ul>
-					<li>You can write inline equations like so: \( a^2 + b^2 = c^2 \)</li>
-					<li>You can write display equations like so: \[ a^2 + b^2 = c^2 \]</li>
-				</ul>
-			</li>
-		</ul>
-		</div>
-	</body>
-</html>
+<h3>Validation</h3>
+<p>The project rebuild succeeded. Focused checks verified the Lambertian BSDF and cosine-weighted sampling PDF, direct point-light response, rejection of lights behind the surface, shadow occlusion, and exclusion of blockers beyond a light. A diffuse surface inside a constant-emission sphere matched the analytic hemisphere integral within the test tolerance. Additional checks verified zero-bounce emission, the maximum-depth-zero path, and the corrected area-light PDF.</p>
+<h2>Part 4: Global Illumination</h2>
+<h3>Indirect-light implementation</h3>
+<p>Global illumination extends direct lighting by tracing light that has reflected from other surfaces. At a camera-visible hit, the integrator evaluates direct light and samples one additional direction from the surface BSDF. The diffuse sampler uses a cosine-weighted hemisphere distribution, with pdf = cos θ / π and BSDF = reflectance / π. The sampled direction is transformed from the local normal frame into world space, and a new ray starts at the hit point with minimum distance EPS_F and one less remaining bounce.</p>
+<p>If this ray intersects the scene, the integrator recursively estimates the light arriving at that next surface. The returned radiance is weighted by BSDF × cos θ / pdf, and also divided by the continuation probability when Russian Roulette is active. For a diffuse surface with cosine-weighted sampling, the BSDF/cosine/PDF factors simplify to the reflectance. A ray that misses the scene contributes no indirect light in these enclosed Cornell-box scenes.</p>
+<p>Direct-light sampling already estimates paths from an emitter to the current surface, so emission is not added again when a BSDF-sampled continuation happens to hit an emitter. Camera-visible emission is handled once by the top-level zero-bounce term. This avoids counting the same direct-light path through both estimators.</p>
+<h3>Depth limits and bounce accumulation</h3>
+<p>Camera rays begin with depth equal to <code>max_ray_depth</code>. At zero depth, only camera-visible emission is returned. At depth one, the reflected-light estimator returns direct illumination without another continuation. When <code>isAccumBounces</code> is true, the integrator adds direct light at every visited surface, accumulating bounce orders up to the depth limit. When it is false, intermediate direct terms are suppressed and direct lighting is evaluated only at the terminal surface, isolating the requested bounce order. Camera-visible emission is also suppressed in isolated-bounce mode for orders greater than zero.</p>
+<h3>Russian Roulette</h3>
+<p>The first indirect continuation is always traced when the maximum depth exceeds one. Subsequent continuations survive with probability 0.65 and terminate with probability 0.35. Surviving contributions are divided by 0.65, preserving their expectation. The maximum depth remains a hard upper bound: Russian Roulette itself does not bias the finite-depth estimator, but truncating paths at a finite maximum depth still excludes longer-path contributions. A maximum of 100 lets the random termination dominate in practice for these diffuse scenes.</p>
+<p>Separate executable snapshots were retained for the fixed-depth experiment and the Russian Roulette experiment. A third snapshot suppresses emission and direct lighting at the camera-visible surface to isolate indirect light. The working repository retains the complete Russian Roulette integrator.</p>
+<h3>Global illumination results</h3>
+<p>All images in this section are original 480 × 360 PNGs saved through the renderer's <code>-f</code> option. The global-illumination images below use 1,024 camera samples per pixel. Bunny uses one area-light sample and fixed depth 5; the spheres use four area-light samples and Russian Roulette with maximum depth 5.</p>
+<figure><img src="images/bunny_fixed_o1_m5_s1024.png" width="480" height="360" alt="Bunny: accumulated global illumination through five bounces, 1,024 samples/pixel."><figcaption>Bunny: accumulated global illumination through five bounces, 1,024 samples/pixel.</figcaption></figure>
+<figure><img src="images/spheres_rr_m5_s1024_l4.png" width="480" height="360" alt="Diffuse spheres: Russian Roulette global illumination, depth limit 5, 1,024 samples/pixel and 4 samples/light."><figcaption>Diffuse spheres: Russian Roulette global illumination, depth limit 5, 1,024 samples/pixel and 4 samples/light.</figcaption></figure>
+<h3>Direct versus indirect illumination</h3>
+<p>These two bunny views use the same camera, 1,024 samples per pixel, and one area-light sample. The direct-only view isolates the first reflected bounce. The indirect-only view includes bounce orders 2 through 5 using Russian Roulette, with both camera-visible emission and the initial direct-light term suppressed.</p>
+<figure><img src="images/bunny_fixed_o0_m1_s1024.png" width="480" height="360" alt="Direct illumination only: the first reflected bounce; camera-visible emission is excluded."><figcaption>Direct illumination only: the first reflected bounce; camera-visible emission is excluded.</figcaption></figure>
+<figure><img src="images/bunny_indirect_m5_s1024.png" width="480" height="360" alt="Indirect illumination only: reflected bounce orders 2–5, with Russian Roulette."><figcaption>Indirect illumination only: reflected bounce orders 2–5, with Russian Roulette.</figcaption></figure>
+<p>Direct illumination produces the strongest highlights and the shadow cast by the bunny beneath the area light. Indirect illumination fills regions that cannot directly see the emitter and carries color from the red and blue walls onto nearby surfaces. Combining these terms brightens the bunny’s shadowed surfaces and produces smoother illumination transitions.</p>
+<h3>Individual versus accumulated bounces</h3>
+<p>Each pair below uses CBbunny.dae, 1,024 samples per pixel, one area-light sample, and the fixed-depth snapshot without Russian Roulette. The first image isolates bounce order m (<code>-o 0</code>); the second accumulates orders 0 through m (<code>-o 1</code>).</p>
+<h3>Bounce order 0</h3>
+<figure><img src="images/bunny_fixed_o0_m0_s1024.png" width="480" height="360" alt="Isolated bounce order 0; 1,024 samples/pixel."><figcaption>Isolated bounce order 0; 1,024 samples/pixel.</figcaption></figure>
+<figure><img src="images/bunny_fixed_o1_m0_s1024.png" width="480" height="360" alt="Accumulated bounce orders 0–0; 1,024 samples/pixel."><figcaption>Accumulated bounce orders 0–0; 1,024 samples/pixel.</figcaption></figure>
+<h3>Bounce order 1</h3>
+<figure><img src="images/bunny_fixed_o0_m1_s1024.png" width="480" height="360" alt="Isolated bounce order 1; 1,024 samples/pixel."><figcaption>Isolated bounce order 1; 1,024 samples/pixel.</figcaption></figure>
+<figure><img src="images/bunny_fixed_o1_m1_s1024.png" width="480" height="360" alt="Accumulated bounce orders 0–1; 1,024 samples/pixel."><figcaption>Accumulated bounce orders 0–1; 1,024 samples/pixel.</figcaption></figure>
+<h3>Bounce order 2</h3>
+<figure><img src="images/bunny_fixed_o0_m2_s1024.png" width="480" height="360" alt="Isolated bounce order 2; 1,024 samples/pixel."><figcaption>Isolated bounce order 2; 1,024 samples/pixel.</figcaption></figure>
+<figure><img src="images/bunny_fixed_o1_m2_s1024.png" width="480" height="360" alt="Accumulated bounce orders 0–2; 1,024 samples/pixel."><figcaption>Accumulated bounce orders 0–2; 1,024 samples/pixel.</figcaption></figure>
+<h3>Bounce order 3</h3>
+<figure><img src="images/bunny_fixed_o0_m3_s1024.png" width="480" height="360" alt="Isolated bounce order 3; 1,024 samples/pixel."><figcaption>Isolated bounce order 3; 1,024 samples/pixel.</figcaption></figure>
+<figure><img src="images/bunny_fixed_o1_m3_s1024.png" width="480" height="360" alt="Accumulated bounce orders 0–3; 1,024 samples/pixel."><figcaption>Accumulated bounce orders 0–3; 1,024 samples/pixel.</figcaption></figure>
+<h3>Bounce order 4</h3>
+<figure><img src="images/bunny_fixed_o0_m4_s1024.png" width="480" height="360" alt="Isolated bounce order 4; 1,024 samples/pixel."><figcaption>Isolated bounce order 4; 1,024 samples/pixel.</figcaption></figure>
+<figure><img src="images/bunny_fixed_o1_m4_s1024.png" width="480" height="360" alt="Accumulated bounce orders 0–4; 1,024 samples/pixel."><figcaption>Accumulated bounce orders 0–4; 1,024 samples/pixel.</figcaption></figure>
+<h3>Bounce order 5</h3>
+<figure><img src="images/bunny_fixed_o0_m5_s1024.png" width="480" height="360" alt="Isolated bounce order 5; 1,024 samples/pixel."><figcaption>Isolated bounce order 5; 1,024 samples/pixel.</figcaption></figure>
+<figure><img src="images/bunny_fixed_o1_m5_s1024.png" width="480" height="360" alt="Accumulated bounce orders 0–5; 1,024 samples/pixel."><figcaption>Accumulated bounce orders 0–5; 1,024 samples/pixel.</figcaption></figure>
+<p>The zeroth bounce is the visible emitter, and the first bounce is directly reflected light. The second bounce adds light that has reflected from one other surface before reaching the visible surface, introducing color bleeding and filling portions of the direct shadow. The third bounce spreads that indirect illumination further through the room and into areas reached only through additional reflections. Higher isolated orders become weaker as each diffuse reflection absorbs part of the energy, while accumulated images approach a stable appearance. Compared with a basic rasterized view using only direct lights, these additional paths create interreflection and colored indirect illumination; rasterization can approximate such effects with extra techniques, but they do not arise from direct shading alone.</p>
+<h3>Russian Roulette depth comparison</h3>
+<p>The following views use CBbunny.dae, 1,024 samples per pixel, one area-light sample, accumulated bounces, and Russian Roulette with maximum depths 0, 1, 2, 3, 4, and 100. The first indirect bounce is guaranteed when the maximum depth is greater than one.</p>
+<figure><img src="images/bunny_rr_m0_s1024.png" width="480" height="360" alt="Russian Roulette, accumulated bounces, maximum depth 0; 1,024 samples/pixel."><figcaption>Russian Roulette, accumulated bounces, maximum depth 0; 1,024 samples/pixel.</figcaption></figure>
+<figure><img src="images/bunny_rr_m1_s1024.png" width="480" height="360" alt="Russian Roulette, accumulated bounces, maximum depth 1; 1,024 samples/pixel."><figcaption>Russian Roulette, accumulated bounces, maximum depth 1; 1,024 samples/pixel.</figcaption></figure>
+<figure><img src="images/bunny_rr_m2_s1024.png" width="480" height="360" alt="Russian Roulette, accumulated bounces, maximum depth 2; 1,024 samples/pixel."><figcaption>Russian Roulette, accumulated bounces, maximum depth 2; 1,024 samples/pixel.</figcaption></figure>
+<figure><img src="images/bunny_rr_m3_s1024.png" width="480" height="360" alt="Russian Roulette, accumulated bounces, maximum depth 3; 1,024 samples/pixel."><figcaption>Russian Roulette, accumulated bounces, maximum depth 3; 1,024 samples/pixel.</figcaption></figure>
+<figure><img src="images/bunny_rr_m4_s1024.png" width="480" height="360" alt="Russian Roulette, accumulated bounces, maximum depth 4; 1,024 samples/pixel."><figcaption>Russian Roulette, accumulated bounces, maximum depth 4; 1,024 samples/pixel.</figcaption></figure>
+<figure><img src="images/bunny_rr_m100_s1024.png" width="480" height="360" alt="Russian Roulette, accumulated bounces, maximum depth 100; 1,024 samples/pixel."><figcaption>Russian Roulette, accumulated bounces, maximum depth 100; 1,024 samples/pixel.</figcaption></figure>
+<p>Increasing the depth from one to two introduces the first indirect contribution. Further increases add weaker higher-order transport. At depth 100, most paths still terminate much earlier through Russian Roulette, while the surviving paths estimate longer-path contributions with the appropriate probability correction. The high depth limit does not force every camera ray to take 100 bounces.</p>
+<h3>Samples-per-pixel comparison</h3>
+<p>These sphere renders hold the scene, camera, four samples per area light, maximum depth 5, and Russian Roulette configuration fixed. Camera sampling varies across 1, 2, 4, 8, 16, 64, and 1,024 samples per pixel.</p>
+<figure><img src="images/spheres_rr_m5_s1_l4.png" width="480" height="360" alt="Diffuse spheres: 1 sample/pixel; 4 samples/light; depth limit 5."><figcaption>Diffuse spheres: 1 sample/pixel; 4 samples/light; depth limit 5.</figcaption></figure>
+<figure><img src="images/spheres_rr_m5_s2_l4.png" width="480" height="360" alt="Diffuse spheres: 2 samples/pixel; 4 samples/light; depth limit 5."><figcaption>Diffuse spheres: 2 samples/pixel; 4 samples/light; depth limit 5.</figcaption></figure>
+<figure><img src="images/spheres_rr_m5_s4_l4.png" width="480" height="360" alt="Diffuse spheres: 4 samples/pixel; 4 samples/light; depth limit 5."><figcaption>Diffuse spheres: 4 samples/pixel; 4 samples/light; depth limit 5.</figcaption></figure>
+<figure><img src="images/spheres_rr_m5_s8_l4.png" width="480" height="360" alt="Diffuse spheres: 8 samples/pixel; 4 samples/light; depth limit 5."><figcaption>Diffuse spheres: 8 samples/pixel; 4 samples/light; depth limit 5.</figcaption></figure>
+<figure><img src="images/spheres_rr_m5_s16_l4.png" width="480" height="360" alt="Diffuse spheres: 16 samples/pixel; 4 samples/light; depth limit 5."><figcaption>Diffuse spheres: 16 samples/pixel; 4 samples/light; depth limit 5.</figcaption></figure>
+<figure><img src="images/spheres_rr_m5_s64_l4.png" width="480" height="360" alt="Diffuse spheres: 64 samples/pixel; 4 samples/light; depth limit 5."><figcaption>Diffuse spheres: 64 samples/pixel; 4 samples/light; depth limit 5.</figcaption></figure>
+<figure><img src="images/spheres_rr_m5_s1024_l4.png" width="480" height="360" alt="Diffuse spheres: 1,024 samples/pixel; 4 samples/light; depth limit 5."><figcaption>Diffuse spheres: 1,024 samples/pixel; 4 samples/light; depth limit 5.</figcaption></figure>
+<p>Low camera-sample counts produce strong Monte Carlo noise because each pixel averages only a few sampled light paths. Increasing the sample count stabilizes indirect illumination, smooths shadow transitions, and improves silhouette antialiasing. The 1,024-sample result is substantially cleaner, although finite-sample noise can remain. With independent finite-variance samples, standard error decreases approximately with the inverse square root of the sample count, so reducing noise further requires increasingly more work.</p>
+<h3>Validation</h3>
+<p>The project rebuilt successfully after restoring the final integrator. A controlled transport fixture verified exact bounce-0, bounce-1, and bounce-2 values in both isolated and accumulated modes, including suppression of duplicate secondary emission. A 100,000-path test at depth 5 matched the analytic expectation with Russian Roulette enabled. A depth-100 test produced finite estimates and matched its expected transport sum within tolerance. The required images were inspected before inclusion in this report.</p>
+<h2>Part 5: Adaptive Sampling</h2>
+<h3>Purpose and convergence criterion</h3>
+<p>Uniform sampling spends the same number of camera rays on every pixel, even though some pixels converge much sooner than others. Adaptive sampling estimates uncertainty separately for each pixel and stops sampling pixels whose estimates have stabilized. The remaining computation is concentrated on pixels with more variable light paths, such as shadowed surfaces and geometry boundaries.</p>
+<p>After n samples, the implementation computes the mean illuminance μ and unbiased sample variance σ². The estimated 95% confidence-interval half-width is I = 1.96 × √(σ² / n). Sampling stops when I ≤ maxTolerance × μ, or when the maximum sample count is reached. This is the assignment’s approximate statistical convergence criterion; it is not a guarantee that the pixel has no remaining error.</p>
+<h3>Implementation</h3>
+<p>For each camera sample, <code>raytrace_pixel</code> traces the global-illumination ray, adds its RGB radiance to a running sum, and uses <code>illum()</code> for the scalar convergence statistic. Welford’s running update maintains the mean and the sum of squared deviations M₂: δ = x − μ, μ ← μ + δ/n, and M₂ ← M₂ + δ(x − μ), where the second expression uses the updated mean. The sample variance is M₂ / (n − 1). This is mathematically equivalent to the sum-and-squared-sum formula, while avoiding cancellation when subtracting nearly equal large values.</p>
+<p>The convergence check runs only after a complete batch and after at least two samples. Variance is clamped to zero if floating-point roundoff makes it slightly negative. A constant black pixel has zero mean and zero estimated uncertainty, so it can stop at the first valid batch. A pixel that has not converged continues until the cap, including any final partial batch. The final RGB sum is divided by the actual sample count, and that same count is stored in <code>sampleCountBuffer</code> for the sampling-rate image.</p>
+<h3>Rendering settings</h3>
+<p>Both scenes below use a maximum of 2,048 camera samples per pixel, batches of 64, relative tolerance 0.05, one area-light sample, maximum ray depth 5, accumulated bounces, and Russian Roulette. All four images are original 480 × 360 PNG outputs from the renderer, with no image resizing or conversion. The scene image uses <code>-f</code>; the accompanying sampling-rate image is saved automatically from the actual per-pixel sample counts.</p>
+<p>The sampling-rate colors represent the fraction of the 2,048-sample cap used by each pixel: blue indicates low sampling, green indicates approximately half the cap, and red indicates the full cap. Constant pixels can stop after 64 samples, or 3.125% of the maximum.</p>
+<h3>Bunny</h3>
+<figure><img src="images/CBbunny_adaptive_s2048_l1_m5.png" width="480" height="360" alt="Bunny: adaptive global illumination; maximum 2,048 samples/pixel, 1 sample/light, and depth 5."><figcaption>Bunny: adaptive global illumination; maximum 2,048 samples/pixel, 1 sample/light, and depth 5.</figcaption></figure>
+<figure><img src="images/CBbunny_adaptive_s2048_l1_m5_rate.png" width="480" height="360" alt="Bunny: actual sampling rates; blue = low, green = approximately 1,024 samples, red = 2,048 samples."><figcaption>Bunny: actual sampling rates; blue = low, green = approximately 1,024 samples, red = 2,048 samples.</figcaption></figure>
+<h3>Diffuse spheres</h3>
+<figure><img src="images/CBspheres_lambertian_adaptive_s2048_l1_m5.png" width="480" height="360" alt="Diffuse spheres: adaptive global illumination; maximum 2,048 samples/pixel, 1 sample/light, and depth 5."><figcaption>Diffuse spheres: adaptive global illumination; maximum 2,048 samples/pixel, 1 sample/light, and depth 5.</figcaption></figure>
+<figure><img src="images/CBspheres_lambertian_adaptive_s2048_l1_m5_rate.png" width="480" height="360" alt="Diffuse spheres: actual sampling rates; blue = low, green = approximately 1,024 samples, red = 2,048 samples."><figcaption>Diffuse spheres: actual sampling rates; blue = low, green = approximately 1,024 samples, red = 2,048 samples.</figcaption></figure>
+<h3>Interpretation</h3>
+<p>The rate maps show that sampling is spatially nonuniform. The directly visible emitter and black background require few samples because their radiance varies little. Much of the room also converges below the cap, while the ceiling surrounding the emitter, contact shadows, and darker portions of the objects require more samples to estimate indirect lighting. Geometry boundaries can require extra samples because jittered camera rays alternate between surfaces with different radiance. The final images retain smooth illumination while avoiding the cost of tracing 2,048 samples for every pixel. Some residual Monte Carlo noise is still possible under a finite cap and an approximate stopping criterion.</p>
+<h3>Validation</h3>
+<p>The project rebuilt successfully. Controlled tests verified that constant and black pixels stop at their first batch, a high-variance pixel reaches a non-batch-aligned cap, and an alternating zero/two-illuminance sequence converges at the analytically expected batch of 1,568 samples under a 5% tolerance. Further checks covered single-sample and zero-sample limits, a disabled batch check, numerical stability for large constant values, division by the actual count, and the sampling-count buffer. The Part 4 transport tests also passed after the update. Both scene images and their sampling-rate maps were visually inspected.</p>
+</body></html>
