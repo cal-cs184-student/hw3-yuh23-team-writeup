@@ -1,0 +1,218 @@
+[
+  {
+    "scene": "cow",
+    "mode": "median",
+    "run": 0,
+    "seconds": 1.4232,
+    "build_seconds": 0.0027,
+    "tests_per_ray": 3.128451
+  },
+  {
+    "scene": "cow",
+    "mode": "sah",
+    "run": 0,
+    "seconds": 1.2396,
+    "build_seconds": 0.0027,
+    "tests_per_ray": 2.627903
+  },
+  {
+    "scene": "cow",
+    "mode": "obb",
+    "run": 0,
+    "seconds": 1.2636,
+    "build_seconds": 0.0035,
+    "tests_per_ray": 2.4048
+  },
+  {
+    "scene": "cow",
+    "mode": "median",
+    "run": 1,
+    "seconds": 1.432,
+    "build_seconds": 0.0016,
+    "tests_per_ray": 3.128451
+  },
+  {
+    "scene": "cow",
+    "mode": "sah",
+    "run": 1,
+    "seconds": 1.246,
+    "build_seconds": 0.0027,
+    "tests_per_ray": 2.627903
+  },
+  {
+    "scene": "cow",
+    "mode": "obb",
+    "run": 1,
+    "seconds": 1.2685,
+    "build_seconds": 0.0035,
+    "tests_per_ray": 2.4048
+  },
+  {
+    "scene": "cow",
+    "mode": "median",
+    "run": 2,
+    "seconds": 1.4267,
+    "build_seconds": 0.0016,
+    "tests_per_ray": 3.128451
+  },
+  {
+    "scene": "cow",
+    "mode": "sah",
+    "run": 2,
+    "seconds": 1.2523,
+    "build_seconds": 0.0027,
+    "tests_per_ray": 2.627903
+  },
+  {
+    "scene": "cow",
+    "mode": "obb",
+    "run": 2,
+    "seconds": 1.2592,
+    "build_seconds": 0.0035,
+    "tests_per_ray": 2.4048
+  },
+  {
+    "scene": "beetle",
+    "mode": "median",
+    "run": 0,
+    "seconds": 1.6227,
+    "build_seconds": 0.002,
+    "tests_per_ray": 3.77169
+  },
+  {
+    "scene": "beetle",
+    "mode": "sah",
+    "run": 0,
+    "seconds": 1.3753,
+    "build_seconds": 0.0036,
+    "tests_per_ray": 2.203929
+  },
+  {
+    "scene": "beetle",
+    "mode": "obb",
+    "run": 0,
+    "seconds": 1.3814,
+    "build_seconds": 0.0047,
+    "tests_per_ray": 2.071378
+  },
+  {
+    "scene": "beetle",
+    "mode": "median",
+    "run": 1,
+    "seconds": 1.6207,
+    "build_seconds": 0.0021,
+    "tests_per_ray": 3.77169
+  },
+  {
+    "scene": "beetle",
+    "mode": "sah",
+    "run": 1,
+    "seconds": 1.3853,
+    "build_seconds": 0.0036,
+    "tests_per_ray": 2.203929
+  },
+  {
+    "scene": "beetle",
+    "mode": "obb",
+    "run": 1,
+    "seconds": 1.3814,
+    "build_seconds": 0.0047,
+    "tests_per_ray": 2.071378
+  },
+  {
+    "scene": "beetle",
+    "mode": "median",
+    "run": 2,
+    "seconds": 1.6379,
+    "build_seconds": 0.0022,
+    "tests_per_ray": 3.77169
+  },
+  {
+    "scene": "beetle",
+    "mode": "sah",
+    "run": 2,
+    "seconds": 1.3948,
+    "build_seconds": 0.0037,
+    "tests_per_ray": 2.203929
+  },
+  {
+    "scene": "beetle",
+    "mode": "obb",
+    "run": 2,
+    "seconds": 1.3991,
+    "build_seconds": 0.0046,
+    "tests_per_ray": 2.071378
+  },
+  {
+    "scene": "teapot",
+    "mode": "median",
+    "run": 0,
+    "seconds": 1.9286,
+    "build_seconds": 0.0006,
+    "tests_per_ray": 4.178851
+  },
+  {
+    "scene": "teapot",
+    "mode": "sah",
+    "run": 0,
+    "seconds": 1.3898,
+    "build_seconds": 0.001,
+    "tests_per_ray": 3.228712
+  },
+  {
+    "scene": "teapot",
+    "mode": "obb",
+    "run": 0,
+    "seconds": 1.3955,
+    "build_seconds": 0.0013,
+    "tests_per_ray": 2.963746
+  },
+  {
+    "scene": "teapot",
+    "mode": "median",
+    "run": 1,
+    "seconds": 1.8998,
+    "build_seconds": 0.0006,
+    "tests_per_ray": 4.178851
+  },
+  {
+    "scene": "teapot",
+    "mode": "sah",
+    "run": 1,
+    "seconds": 1.3802,
+    "build_seconds": 0.0011,
+    "tests_per_ray": 3.228712
+  },
+  {
+    "scene": "teapot",
+    "mode": "obb",
+    "run": 1,
+    "seconds": 1.396,
+    "build_seconds": 0.0014,
+    "tests_per_ray": 2.963746
+  },
+  {
+    "scene": "teapot",
+    "mode": "median",
+    "run": 2,
+    "seconds": 1.9158,
+    "build_seconds": 0.0006,
+    "tests_per_ray": 4.178851
+  },
+  {
+    "scene": "teapot",
+    "mode": "sah",
+    "run": 2,
+    "seconds": 1.4059,
+    "build_seconds": 0.0011,
+    "tests_per_ray": 3.228712
+  },
+  {
+    "scene": "teapot",
+    "mode": "obb",
+    "run": 2,
+    "seconds": 1.3902,
+    "build_seconds": 0.0013,
+    "tests_per_ray": 2.963746
+  }
+]

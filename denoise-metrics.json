@@ -1,0 +1,14 @@
+[
+  {
+    "scene": "CBbunny",
+    "mse": 0.0013168677408024452,
+    "mse_denoised": 0.000740209487329185,
+    "filter_seconds": 0.074255
+  },
+  {
+    "scene": "CBspheres_lambertian",
+    "mse": 0.0014718640385226955,
+    "mse_denoised": 0.0006920105218315843,
+    "filter_seconds": 0.070531
+  }
+]
