@@ -3,31 +3,31 @@
     "scene": "cow",
     "mode": "median",
     "run": 0,
-    "seconds": 1.4232,
-    "build_seconds": 0.0027,
+    "seconds": 1.5675,
+    "build_seconds": 0.0016,
     "tests_per_ray": 3.128451
   },
   {
     "scene": "cow",
     "mode": "sah",
     "run": 0,
-    "seconds": 1.2396,
-    "build_seconds": 0.0027,
+    "seconds": 1.3134,
+    "build_seconds": 0.0029,
     "tests_per_ray": 2.627903
   },
   {
     "scene": "cow",
     "mode": "obb",
     "run": 0,
-    "seconds": 1.2636,
-    "build_seconds": 0.0035,
+    "seconds": 1.3341,
+    "build_seconds": 0.0036,
     "tests_per_ray": 2.4048
   },
   {
     "scene": "cow",
     "mode": "median",
     "run": 1,
-    "seconds": 1.432,
+    "seconds": 1.4922,
     "build_seconds": 0.0016,
     "tests_per_ray": 3.128451
   },
@@ -35,7 +35,7 @@
     "scene": "cow",
     "mode": "sah",
     "run": 1,
-    "seconds": 1.246,
+    "seconds": 1.3116,
     "build_seconds": 0.0027,
     "tests_per_ray": 2.627903
   },
@@ -43,15 +43,15 @@
     "scene": "cow",
     "mode": "obb",
     "run": 1,
-    "seconds": 1.2685,
-    "build_seconds": 0.0035,
+    "seconds": 1.3135,
+    "build_seconds": 0.0036,
     "tests_per_ray": 2.4048
   },
   {
     "scene": "cow",
     "mode": "median",
     "run": 2,
-    "seconds": 1.4267,
+    "seconds": 1.503,
     "build_seconds": 0.0016,
     "tests_per_ray": 3.128451
   },
@@ -59,7 +59,7 @@
     "scene": "cow",
     "mode": "sah",
     "run": 2,
-    "seconds": 1.2523,
+    "seconds": 1.3099,
     "build_seconds": 0.0027,
     "tests_per_ray": 2.627903
   },
@@ -67,7 +67,7 @@
     "scene": "cow",
     "mode": "obb",
     "run": 2,
-    "seconds": 1.2592,
+    "seconds": 1.3213,
     "build_seconds": 0.0035,
     "tests_per_ray": 2.4048
   },
@@ -75,7 +75,7 @@
     "scene": "beetle",
     "mode": "median",
     "run": 0,
-    "seconds": 1.6227,
+    "seconds": 1.6675,
     "build_seconds": 0.002,
     "tests_per_ray": 3.77169
   },
@@ -83,71 +83,71 @@
     "scene": "beetle",
     "mode": "sah",
     "run": 0,
-    "seconds": 1.3753,
-    "build_seconds": 0.0036,
+    "seconds": 1.4313,
+    "build_seconds": 0.0038,
     "tests_per_ray": 2.203929
   },
   {
     "scene": "beetle",
     "mode": "obb",
     "run": 0,
-    "seconds": 1.3814,
-    "build_seconds": 0.0047,
+    "seconds": 1.4534,
+    "build_seconds": 0.0048,
     "tests_per_ray": 2.071378
   },
   {
     "scene": "beetle",
     "mode": "median",
     "run": 1,
-    "seconds": 1.6207,
-    "build_seconds": 0.0021,
+    "seconds": 1.6842,
+    "build_seconds": 0.002,
     "tests_per_ray": 3.77169
   },
   {
     "scene": "beetle",
     "mode": "sah",
     "run": 1,
-    "seconds": 1.3853,
-    "build_seconds": 0.0036,
-    "tests_per_ray": 2.203929
-  },
-  {
-    "scene": "beetle",
-    "mode": "obb",
-    "run": 1,
-    "seconds": 1.3814,
-    "build_seconds": 0.0047,
-    "tests_per_ray": 2.071378
-  },
-  {
-    "scene": "beetle",
-    "mode": "median",
-    "run": 2,
-    "seconds": 1.6379,
-    "build_seconds": 0.0022,
-    "tests_per_ray": 3.77169
-  },
-  {
-    "scene": "beetle",
-    "mode": "sah",
-    "run": 2,
-    "seconds": 1.3948,
+    "seconds": 1.4396,
     "build_seconds": 0.0037,
     "tests_per_ray": 2.203929
   },
   {
     "scene": "beetle",
     "mode": "obb",
+    "run": 1,
+    "seconds": 1.4518,
+    "build_seconds": 0.0047,
+    "tests_per_ray": 2.071378
+  },
+  {
+    "scene": "beetle",
+    "mode": "median",
     "run": 2,
-    "seconds": 1.3991,
-    "build_seconds": 0.0046,
+    "seconds": 1.663,
+    "build_seconds": 0.002,
+    "tests_per_ray": 3.77169
+  },
+  {
+    "scene": "beetle",
+    "mode": "sah",
+    "run": 2,
+    "seconds": 1.4387,
+    "build_seconds": 0.0036,
+    "tests_per_ray": 2.203929
+  },
+  {
+    "scene": "beetle",
+    "mode": "obb",
+    "run": 2,
+    "seconds": 1.4786,
+    "build_seconds": 0.0047,
     "tests_per_ray": 2.071378
   },
   {
     "scene": "teapot",
     "mode": "median",
     "run": 0,
-    "seconds": 1.9286,
+    "seconds": 1.9605,
     "build_seconds": 0.0006,
     "tests_per_ray": 4.178851
   },
@@ -155,7 +155,7 @@
     "scene": "teapot",
     "mode": "sah",
     "run": 0,
-    "seconds": 1.3898,
+    "seconds": 1.4415,
     "build_seconds": 0.001,
     "tests_per_ray": 3.228712
   },
@@ -163,15 +163,15 @@
     "scene": "teapot",
     "mode": "obb",
     "run": 0,
-    "seconds": 1.3955,
-    "build_seconds": 0.0013,
+    "seconds": 1.4727,
+    "build_seconds": 0.0014,
     "tests_per_ray": 2.963746
   },
   {
     "scene": "teapot",
     "mode": "median",
     "run": 1,
-    "seconds": 1.8998,
+    "seconds": 1.9515,
     "build_seconds": 0.0006,
     "tests_per_ray": 4.178851
   },
@@ -179,15 +179,15 @@
     "scene": "teapot",
     "mode": "sah",
     "run": 1,
-    "seconds": 1.3802,
-    "build_seconds": 0.0011,
+    "seconds": 1.4476,
+    "build_seconds": 0.001,
     "tests_per_ray": 3.228712
   },
   {
     "scene": "teapot",
     "mode": "obb",
     "run": 1,
-    "seconds": 1.396,
+    "seconds": 1.4657,
     "build_seconds": 0.0014,
     "tests_per_ray": 2.963746
   },
@@ -195,7 +195,7 @@
     "scene": "teapot",
     "mode": "median",
     "run": 2,
-    "seconds": 1.9158,
+    "seconds": 1.9665,
     "build_seconds": 0.0006,
     "tests_per_ray": 4.178851
   },
@@ -203,7 +203,7 @@
     "scene": "teapot",
     "mode": "sah",
     "run": 2,
-    "seconds": 1.4059,
+    "seconds": 1.4438,
     "build_seconds": 0.0011,
     "tests_per_ray": 3.228712
   },
@@ -211,8 +211,8 @@
     "scene": "teapot",
     "mode": "obb",
     "run": 2,
-    "seconds": 1.3902,
-    "build_seconds": 0.0013,
+    "seconds": 1.4461,
+    "build_seconds": 0.0015,
     "tests_per_ray": 2.963746
   }
 ]
